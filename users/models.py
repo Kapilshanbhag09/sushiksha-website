@@ -9,7 +9,24 @@ ROLE = (
     ('Mentor', "Mentor"),
 )
 
+UPGRADE_POINTS = [
+    [500, 1000, 2000, 5000, 2000, 3000, 5000],
+    [1000, 3000, 5000, 15000, 4000, 5000, 10000],
+]
+
+# UPGRADE_POINTS = [
+#     [0, 0, 0, 10815, 0, 21, 1004],
+#     [0, 0, 0, 10815, 0, 21, 1004],
+# ]
+
+RANK = (
+    ('Sophist', 'Sophist'),
+    ('Senator', 'Senator'),
+    ('Caesar', 'Caesar'),
+)
+
 BATCH = (
+    ("2010", "2010"),
     ("2011", "2011"),
     ("2012", "2012"),
     ("2013", "2013"),
@@ -26,6 +43,7 @@ BATCH = (
 
 
 class Profile(models.Model):
+    slack_id = models.CharField(max_length=15, null=True,blank=True,help_text="Slack Id of user")
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     image = models.ImageField(default='default.jpg', upload_to='profile_pics')
     role = models.BooleanField(default=False)
@@ -33,6 +51,8 @@ class Profile(models.Model):
     name = models.CharField(max_length=100, default=None, blank=True, null=True)
     phone = models.PositiveBigIntegerField(default=None, blank=True, null=True)
     college = models.CharField(max_length=300, default=None, blank=True, null=True)
+    degree = models.CharField(max_length=100, default=None, blank=True, null=True)
+    branch = models.CharField(max_length=100, default=None, blank=True, null=True)
     profession = models.CharField(max_length=100, default=None, blank=True, null=True)
     address = models.TextField(default=None, blank=True, null=True)
     guidance = models.TextField(default=None, blank=True, null=True)
@@ -42,6 +62,11 @@ class Profile(models.Model):
     github = models.URLField(default=None, blank=True, null=True)
     okr = models.URLField(default=None, blank=True, null=True)
     facebook = models.URLField(default=None, blank=True, null=True)
+    initiator = models.BooleanField(default=False)
+    points = models.IntegerField(default=0)
+    total_points = models.IntegerField(default=0)
+    suShells = models.IntegerField(default=0)
+    rank = models.CharField(max_length=10, choices=RANK, default='Sophist')
 
     def __str__(self):
         return f'{self.user.username} Profile'
@@ -62,8 +87,12 @@ class Profile(models.Model):
     def get_point(self):
         point = self.user.reward_set.aggregate(Sum('badges__points'))['badges__points__sum']
         if point:
-            return point
+            self.points = point
+            self.save()
+            return self.points
         else:
+            self.points = 0
+            self.save()
             return 0
 
     def get_team_name(self):
@@ -72,6 +101,11 @@ class Profile(models.Model):
             return team.name
         else:
             return ''
+
+    def get_team_url(self):
+        team = self.teams_set.first()
+        if team:
+            return team.get_absolute_url()
 
     def get_house_name(self):
         team = self.teams_set.first()
@@ -83,6 +117,13 @@ class Profile(models.Model):
                 return ''
         else:
             return ''
+
+    def get_house_url(self):
+        team = self.teams_set.first()
+        if team:
+            team = team.house_set.first()
+            if team:
+                return team.get_absolute_url()
 
     @property
     def get_number_of_badges(self):
@@ -106,9 +147,17 @@ class Pomodoro(models.Model):
         return f'{self.user.username} - Pomodoro Count : {self.count}'
 
 
+class BadgeCategory(models.Model):
+    name = models.CharField(max_length=30)
+
+    def __str__(self):
+        return f'{self.name}'
+
+
 class Badge(models.Model):
     points = models.IntegerField(default=1)
     title = models.CharField(max_length=30)
+    category = models.ForeignKey(BadgeCategory, on_delete=models.SET_NULL, null=True)
     description = models.CharField(max_length=500)
     logo = models.ImageField(upload_to='badges')
     featured = models.BooleanField(default=False)
@@ -117,7 +166,7 @@ class Badge(models.Model):
         ordering = ['title']
 
     def __str__(self):
-        return f'Badge: {self.title}'
+        return f'{self.title} ({self.points})'
 
 
 class Reward(models.Model):
@@ -158,3 +207,15 @@ class House(models.Model):
 
     def get_absolute_url(self):
         return reverse('house', kwargs={'id': self.pk})
+
+
+class Mentions(models.Model):
+    image = models.ImageField(upload_to='mentions')
+    title = models.CharField(max_length=100)
+    team = models.ForeignKey(Teams, null=True, blank=True, on_delete=models.CASCADE)
+    house = models.ForeignKey(House, null=True, blank=True, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE)
+    description = models.CharField(max_length=500, default='description', null=True, blank=True)
+
+    def __str__(self):
+        return f'{self.title}'

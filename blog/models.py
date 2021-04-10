@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from users.models import Profile
 from tinymce import HTMLField
-
+from PIL import Image
 
 class Categories(models.Model):
     title = models.CharField(max_length=20)
@@ -22,11 +22,21 @@ class Post(models.Model):
     thumbnail = models.ImageField(upload_to='blog-post-thumbnail')
     categories = models.ManyToManyField(Categories)
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+        img = Image.open(self.thumbnail.path)
+
+        if img.height > 700 or img.width > 900:
+            output_size = (600, 900)
+            img.thumbnail(output_size)
+            img.save(self.thumbnail.path)
+
     def __str__(self):
         return f"{self.author.user.username} post {self.title}"
 
     def get_absolute_url(self):
-        return reverse('blog-detail', kwargs={'id': self.pk})
+        return reverse('blog-detail', kwargs={'id': str(self.pk) + "--" + self.title})
 
     def get_update_url(self):
         return reverse('blog-update', kwargs={'id': self.pk})

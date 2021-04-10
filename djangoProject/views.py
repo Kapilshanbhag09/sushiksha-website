@@ -1,8 +1,9 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from contact.models import Testimonial, Faq
 from users.models import House, Teams
 from blog.models import Post
 from django.shortcuts import get_object_or_404
+from django.contrib.auth import logout
 
 
 def index(request):
@@ -15,7 +16,7 @@ def index(request):
         'featured': featured,
         'title': 'Home'
     }
-    return render(request, 'index.html', context=context)
+    return render(request, 'webpages/index.html', context=context)
 
 
 def about(request):
@@ -26,7 +27,7 @@ def about(request):
         # 'featured': featured,
         # 'common': common
     }
-    return render(request, 'about.html', context=context)
+    return render(request, 'webpages/about.html', context=context)
 
 
 def house(request, id):
@@ -34,7 +35,7 @@ def house(request, id):
     context = {
         'query_set': house_set
     }
-    return render(request, 'house.html', context=context)
+    return render(request, 'member-list/house.html', context=context)
 
 
 def team(request, id):
@@ -42,7 +43,7 @@ def team(request, id):
     context = {
         'query_set': team_set
     }
-    return render(request, 'team.html', context=context)
+    return render(request, 'member-list/team.html', context=context)
 
 
 def handler404(request, exception):
@@ -50,7 +51,7 @@ def handler404(request, exception):
         'error_no': 404,
         'error_detail': 'Page Not Found'
     }
-    return render(request, '404.html', context)
+    return render(request, 'webpages/404.html', context)
 
 
 def handler500(request):
@@ -58,7 +59,7 @@ def handler500(request):
         'error_no': 500,
         'error_detail': 'Server Error'
     }
-    return render(request, '404.html', context)
+    return render(request, 'webpages/404.html', context)
 
 
 def handler400(request, exception):
@@ -66,7 +67,7 @@ def handler400(request, exception):
         'error_no': 400,
         'error_detail': 'Bad Request'
     }
-    return render(request, '404.html', context)
+    return render(request, 'webpages/404.html', context)
 
 
 def handler403(request, exception):
@@ -74,4 +75,9 @@ def handler403(request, exception):
         'error_no': 403,
         'error_detail': 'Permission Denied'
     }
-    return render(request, '404.html', context)
+    return render(request, 'webpages/404.html', context)
+
+
+def my_logout(request):
+    logout(request)
+    return redirect('home')

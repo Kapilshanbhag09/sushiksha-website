@@ -6,6 +6,7 @@ from django.contrib import messages
 from .models import Post
 from .forms import CommentForm, PostForm
 from users.models import Profile
+from django.contrib.auth.models import User
 
 
 def get_category_count():
@@ -32,7 +33,7 @@ def search(request):
 
     category_count = get_category_count()
     most_recent = Post.objects.order_by('-timestamp')[:4]
-    paginator = Paginator(queryset, 6)
+    paginator = Paginator(queryset, 10)
     page_request_var = 'page'
     page = request.GET.get(page_request_var)
     try:
@@ -47,14 +48,14 @@ def search(request):
         'page_request_var': page_request_var,
         'category_count': category_count
     }
-    return render(request, 'blog.html', context=context)
+    return render(request, 'blog/blog.html', context=context)
 
 
 def blog(request):
     category_count = get_category_count()
     most_recent = Post.objects.order_by('-timestamp')[:4]
     post = Post.objects.order_by('-timestamp')
-    paginator = Paginator(post, 4)
+    paginator = Paginator(post, 8)
     page_request_var = 'page'
     page = request.GET.get(page_request_var)
     try:
@@ -67,12 +68,15 @@ def blog(request):
         'queryset': paginated_queryset,
         'most_recent': most_recent,
         'page_request_var': page_request_var,
-        'category_count': category_count
+        'category_count': category_count,
+        'title': 'Blogs'
     }
-    return render(request, 'blog.html', context)
+    return render(request, 'blog/blog.html', context)
 
 
 def blog_single(request, id):
+    id = id.split("--", 1)
+    id = id[0]
     post = get_object_or_404(Post, id=id)
     category_count = get_category_count()
     most_recent = Post.objects.order_by('-timestamp')[:4]
@@ -88,10 +92,13 @@ def blog_single(request, id):
         'post': post,
         'most_recent': most_recent,
         'category_count': category_count,
-        'form': form
+        'form': form,
+        'meta_title': post.title,
+        'meta_description': post.overview,
+        'meta_image_url': post.thumbnail.url,
+        'title': f'A blog by {post.author.user.profile.name}: {post.title}'
     }
-
-    return render(request, 'blog-single.html', context=context)
+    return render(request, 'blog/blog-single.html', context=context)
 
 
 def blog_create(request):
@@ -108,7 +115,7 @@ def blog_create(request):
         "title": title,
         'form': form
     }
-    return render(request, "post-create.html", context)
+    return render(request, "blog/post-create.html", context)
 
 
 def blog_update(request, id):
@@ -128,7 +135,7 @@ def blog_update(request, id):
             "title": title,
             'form': form
         }
-        return render(request, "post-create.html", context)
+        return render(request, "blog/post-create.html", context)
 
 
 def blog_delete(request, id):
@@ -140,3 +147,46 @@ def blog_delete(request, id):
     else:
         messages.error(request, "You are not authorised to delete others Post")
         return redirect(reverse("blog"))
+
+
+def categories_view(request, category):
+    post = Post.objects.filter(categories__title=category)
+    category_count = get_category_count()
+    most_recent = Post.objects.order_by('-timestamp')[:4]
+    paginator = Paginator(post, 16)
+    page_request_var = 'page'
+    page = request.GET.get(page_request_var)
+    try:
+        paginated_queryset = paginator.page(page)
+    except PageNotAnInteger:
+        paginated_queryset = paginator.page(1)
+    except EmptyPage:
+        paginated_queryset = paginator.page(paginator.num_pages)
+    context = {
+        'queryset': paginated_queryset,
+        'most_recent': most_recent,
+        'page_request_var': page_request_var,
+        'category_count': category_count
+    }
+    return render(request, 'blog/blog.html', context)
+
+
+def user_post(request, id):
+    user = get_object_or_404(User, id=id)
+    post = Post.objects.filter(author=user.profile).order_by('-timestamp')
+    paginator = Paginator(post, 15)
+    page_request_var = 'page'
+    page = request.GET.get(page_request_var)
+    try:
+        paginated_queryset = paginator.page(page)
+    except PageNotAnInteger:
+        paginated_queryset = paginator.page(1)
+    except EmptyPage:
+        paginated_queryset = paginator.page(paginator.num_pages)
+    context = {
+        'queryset': paginated_queryset,
+        'page_request_var': page_request_var,
+        'title': 'Blogs',
+        'heading': user.profile.name + ' Blogs'
+    }    
+    return render(request, 'blog/user-posts.html', context=context)
